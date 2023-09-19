@@ -185,11 +185,6 @@ def images_to_pdf(name, images):
 
 
 def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int):
-    print("pdf2a5:")
-    print(f"{source=}")
-    print(f"{dest=}")
-    print(f"{dpi=}")
-
     images = pdf_to_image_list(str(source), dpi=dpi)
     batch = 5
 
