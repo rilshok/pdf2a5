@@ -1,0 +1,22 @@
+[project]
+name = 'pdf2a5'
+readme = 'README.md'
+requires-python = '>=3.11'
+dynamic = ['version', 'dependencies']
+
+[build-system]
+requires = ['setuptools>=43.0.0', 'wheel']
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools.packages.find]
+include = ['pdf2a5']
+
+[tool.setuptools.package-data]
+'pdf2a5' = ['**/*.py', '**/*.pyi']
+
+[tool.setuptools.dynamic]
+version = { attr = 'pdf2a5.__version__' }
+dependencies = { file = ['requirements.txt'] }
+
+[project.scripts]
+pdf2a5 = "pdf2a5.entrypoint:main"
