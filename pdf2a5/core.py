@@ -172,7 +172,8 @@ def as2_a5_page(image1, image2, dpi):
 
     # position for the second image (right, maximum right)
     canvas.paste(
-        image2, (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2)
+        image2,
+        (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2),
     )
 
     return canvas
@@ -183,16 +184,16 @@ def images_to_pdf(name, images):
     images[0].save(pdf_filename, save_all=True, append_images=images[1:])
 
 
-def convert_pdf_to_a5(source: Path, dest: Path, dpi: int):
+def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int):
     print("pdf2a5:")
     print(f"{source=}")
     print(f"{dest=}")
     print(f"{dpi=}")
 
     images = pdf_to_image_list(str(source), dpi=dpi)
-    group_size = 5
+    batch = 5
 
-    scheme_ = make_a5_scheme(len(images), group_size)
+    scheme_ = make_a5_scheme(len(images), batch)
     scheme = [
         (name, [(p.left.payload, p.right.payload) for p in pages])
         for (name, pages) in scheme_
