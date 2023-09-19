@@ -3,12 +3,7 @@ from typing import Optional
 
 import typer
 
-
-def convert_pdf_to_a5(source: Path, dest: Path, dpi: int):
-    print("pdf2a5:")
-    print(f"{source=}")
-    print(f"{dest=}")
-    print(f"{dpi=}")
+from .core import convert_pdf_to_a5
 
 
 def pdf2a5(source: Path, dest: Optional[Path] = None, dpi: int = 120):
