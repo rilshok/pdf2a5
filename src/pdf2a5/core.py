@@ -87,7 +87,7 @@ def make_sheets(sheet_count: int, pages: list[int]):
         for _ in range(sheet_count)
     ]
 
-    contents = []
+    contents: list[Content] = []
     for sheet in sheets[::-1]:
         contents.append(sheet.back.right)
         contents.append(sheet.front.left)
@@ -96,9 +96,10 @@ def make_sheets(sheet_count: int, pages: list[int]):
         contents.append(sheet.front.right)
         contents.append(sheet.back.left)
 
-    for content, page in zip(contents, pages):
+    for content, page in zip(contents, pages, strict=True):
         content.payload = page
 
+    # TODO(@rilshok): why contents is needed?
     return sheets
 
 
