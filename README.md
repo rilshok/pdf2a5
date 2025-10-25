@@ -23,10 +23,11 @@ To use the PDF to A5 Booklet Converter, follow these steps:
 The command-line interface allows you to easily convert PDF files into A5 booklets. Here's how to use it:
 
 ```bash
-pdf2a5 SOURCE_PDF [DESTINATION_DIRECTORY] [--dpi DPI] [--batch BATCH_SIZE]
+pdf2a5 SOURCE_PDF [DESTINATION_DIRECTORY] [--dpi DPI] [--batch BATCH_SIZE] [--workers WORKERS]
 ```
 
 - `SOURCE_PDF` (string): The path to the source PDF file you want to convert.
 - `DESTINATION_DIRECTORY` (optional string): The directory where the converted PDF booklets will be saved. If not provided, the tool will create a directory for the output files in the current working directory.
 - `--dpi` `DPI` (optional integer): The resolution in dots per inch (DPI) for rendering images. The default value is 300 DPI, because this provides excellent quality when printing on A4 paper, but does not result in an excessively large output file size.
 - `--batch` `BATCH_SIZE` (optional integer): The number of pages to be included in each batch. The default value is 4, as A5 booklets printed on 80 g/m² A4 paper are easy to fold when they consist of 4 sheets (16 A5 pages).
+- `--workers` `WORKERS` (optional integer): The number of worker processes to use for parallel processing. The default value is 4.

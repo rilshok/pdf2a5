@@ -2,6 +2,7 @@ import itertools
 import math
 import os
 from collections.abc import Iterator
+from concurrent.futures import FIRST_EXCEPTION, ProcessPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -118,31 +119,16 @@ def make_a5_scheme(
     for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums, strict=True)):
         block_sheets = make_sheets(sheet_count, pages)
         yield f"{block:03}_a", [sheet.front for sheet in block_sheets]
+        # TODO(@rilshok): reverse back pages?
         yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
 
 
-def pdf_to_image_list(save_root: Path, path: Path, dpi: int) -> list[Path]:
-    result: list[Path] = []
-
-    # TODO(@rilshok): open with context manager?
-    pdf_document = fitz.open(path.as_posix())
-
+def _read_number_of_pages(pdf_path: Path) -> int:
+    pdf_document = fitz.open(pdf_path.as_posix())
     try:
-        for page_number in range(len(pdf_document)):
-            page = pdf_document.load_page(page_number)
-
-            image = page.get_pixmap(dpi=dpi)
-            img_data = image.samples
-            pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
-
-            save_path = save_root / f"{_random_name()}.png"
-            pil_image.save(save_path)
-
-            result.append(save_path)
+        return len(pdf_document)
     finally:
         pdf_document.close()
-
-    return result
 
 
 def _empty_image() -> Image.Image:
@@ -155,7 +141,6 @@ def as2_a5_page(
     dpi: int,
     save_root: Path,
 ) -> Path:
-    # TODO(@rilshok): change image1 and image2 to path
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
     image2 = _empty_image() if image2_path is None else Image.open(image2_path)
@@ -207,35 +192,95 @@ def as2_a5_page(
     return save_path
 
 
-def _write_pdf(root: Path, name: str, image_paths: list[Path]) -> Path:
-    image_list = [Image.open(p) for p in image_paths]
-    save_path = root / f"{name}.pdf"
-    image_list[0].save(save_path, save_all=True, append_images=image_list[1:])
+def _write_pdf(save_path: Path, image_paths: list[Path]) -> Path:
+    head, tail = Image.open(image_paths[0]), (Image.open(p) for p in image_paths[1:])
+    head.save(save_path, save_all=True, append_images=tail)
     return save_path
 
 
-def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
+def _export_page_images(
+    src: Path,
+    pages: list[int],
+    save_root: Path,
+    dpi: int,
+) -> list[Path]:
+    result: list[Path] = []
+    document = fitz.open(src.as_posix())
+    try:
+        for page_number in pages:
+            page = document.load_page(page_number)
+            image = page.get_pixmap(dpi=dpi)
+            img_data = image.samples
+            size = (image.width, image.height)
+            pil_image = Image.frombytes("RGB", size, img_data)
+            save_path = save_root / f"{_random_name()}.png"
+            pil_image.save(save_path)
+            result.append(save_path)
+    finally:
+        document.close()
+    return result
+
+
+def _build_sub_pdf(
+    src: Path,
+    pages: list[tuple[int | None, int | None]],
+    save_path: Path,
+    dpi: int,
+) -> None:
+    page_nums = [n for page in pages for n in page if n is not None]
     with TemporaryDirectory() as tmpdir:
-        root_raw = Path(tmpdir) / "raw"
-        root_raw.mkdir(parents=False, exist_ok=False)
-        image_paths = pdf_to_image_list(save_root=root_raw, path=src, dpi=dpi)
-
-        scheme_ = make_a5_scheme(len(image_paths), batch)
-        scheme = [
-            (name, [(p.left.payload, p.right.payload) for p in pages])
-            for (name, pages) in scheme_
-        ]
-
-        root_pages = Path(tmpdir) / "pages"
-        root_pages.mkdir(parents=False, exist_ok=False)
-        for name, pages_scheme in scheme:
-            page_paths = [
-                as2_a5_page(
-                    image1_path=None if left is None else image_paths[left],
-                    image2_path=None if right is None else image_paths[right],
+        root_temp = Path(tmpdir)
+        single_page_paths: dict[int | None, Path | None] = dict(
+            zip(
+                page_nums,
+                _export_page_images(
+                    src=src,
+                    pages=page_nums,
+                    save_root=root_temp,
                     dpi=dpi,
-                    save_root=root_pages,
-                )
-                for left, right in pages_scheme
-            ]
-            _write_pdf(root=dst_root, name=name, image_paths=page_paths)
+                ),
+                strict=True,
+            )
+        )
+        single_page_paths[None] = None
+        page_paths = [
+            as2_a5_page(
+                image1_path=single_page_paths[left],
+                image2_path=single_page_paths[right],
+                dpi=dpi,
+                save_root=root_temp,
+            )
+            for left, right in pages
+        ]
+        _write_pdf(save_path=save_path, image_paths=page_paths)
+
+
+def convert_pdf_to_a5(
+    src: Path,
+    dst_root: Path,
+    dpi: int,
+    batch: int,
+    workers: int,
+) -> None:
+    scheme: dict[str, list[tuple[int | None, int | None]]] = {
+        name: [(p.left.payload, p.right.payload) for p in pages]
+        for name, pages in make_a5_scheme(_read_number_of_pages(src), batch)
+    }
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(
+                _build_sub_pdf,
+                src=src,
+                pages=pages,
+                save_path=dst_root / f"{name}.pdf",
+                dpi=dpi,
+            )
+            for name, pages in scheme.items()
+        ]
+        done, not_done = wait(futures, return_when=FIRST_EXCEPTION)
+        for future in done:
+            if (exception := future.exception()) is None:
+                continue
+            for f in not_done:
+                f.cancel()
+            raise exception
