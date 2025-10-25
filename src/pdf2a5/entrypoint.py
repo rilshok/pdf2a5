@@ -39,10 +39,16 @@ def pdf2a5(
             help="Number of pages to process in a single batch.",
         ),
     ] = 4,
+    fold: Annotated[
+        float,
+        typer.Option(
+            help="Offset from sheet bend (mm).",
+        ),
+    ] = 0.0,
     shift: Annotated[
         float,
         typer.Option(
-            help="Shift towards the nearest short side of the sheet.",
+            help="Shift towards the nearest short side of the sheet (mm).",
         ),
     ] = 0.0,
     crop: Annotated[
@@ -86,9 +92,10 @@ def pdf2a5(
         dst_root=dst,
         dpi=dpi,
         batch=batch,
-        workers=workers,
+        fold_mm=fold,
         shift_mm=shift,
         crop=crop,
+        workers=workers,
     )
 
 

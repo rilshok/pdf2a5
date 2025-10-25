@@ -140,7 +140,8 @@ def as2_a5_page(
     image2_path: Path | None,
     dpi: int,
     save_root: Path,
-    shift_mm: float = 50.0,
+    fold_mm: float,
+    shift_mm: float,
 ) -> Path:
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
@@ -148,9 +149,9 @@ def as2_a5_page(
     a4_width_mm = 297
     a4_height_mm = 210
 
-    shift_px = int(shift_mm * dpi / 25.4)
-
     # Converting dimensions to pixels with DPI
+    fold_px = int(fold_mm * dpi / 25.4)
+    shift_px = int(shift_mm * dpi / 25.4)
     a4_width_px = int(a4_width_mm * dpi / 25.4)
     a4_height_px = int(a4_height_mm * dpi / 25.4)
 
@@ -159,7 +160,7 @@ def as2_a5_page(
 
     # the first image will be on the left
     image1_width, image1_height = image1.size
-    max_width = a4_width_px // 2  # max width for the image
+    max_width = a4_width_px // 2 - fold_px  # max width for the image
     max_height = a4_height_px  # max height for the image
 
     # scaling the first image
@@ -250,6 +251,7 @@ def _build_sub_pdf(
     *,
     save_path: Path,
     dpi: int,
+    fold_mm: float,
     shift_mm: float,
     crop: bool,
 ) -> None:
@@ -276,6 +278,7 @@ def _build_sub_pdf(
                 image2_path=single_page_paths[right],
                 dpi=dpi,
                 save_root=root_temp,
+                fold_mm=fold_mm,
                 shift_mm=shift_mm,
             )
             for left, right in pages
@@ -289,9 +292,10 @@ def convert_pdf_to_a5(
     *,
     dpi: int,
     batch: int,
+    fold_mm: float,
     shift_mm: float,
-    workers: int,
     crop: bool,
+    workers: int,
 ) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
@@ -305,6 +309,7 @@ def convert_pdf_to_a5(
                 pages=pages,
                 save_path=dst_root / f"{name}.pdf",
                 dpi=dpi,
+                fold_mm=fold_mm,
                 shift_mm=shift_mm,
                 crop=crop,
             )
