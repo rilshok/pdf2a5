@@ -121,6 +121,14 @@ def make_a5_scheme(
         yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
 
 
+def _read_number_of_pages(pdf_path: Path) -> int:
+    pdf_document = fitz.open(pdf_path.as_posix())
+    try:
+        return len(pdf_document)
+    finally:
+        pdf_document.close()
+
+
 def pdf_to_image_list(save_root: Path, path: Path, dpi: int) -> list[Path]:
     result: list[Path] = []
 
@@ -215,20 +223,18 @@ def _write_pdf(root: Path, name: str, image_paths: list[Path]) -> Path:
 
 
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
+    scheme: dict[str, list[tuple[int | None, int | None]]] = {
+        name: [(p.left.payload, p.right.payload) for p in pages]
+        for name, pages in make_a5_scheme(_read_number_of_pages(src), batch)
+    }
+
     with TemporaryDirectory() as tmpdir:
         root_raw = Path(tmpdir) / "raw"
         root_raw.mkdir(parents=False, exist_ok=False)
         image_paths = pdf_to_image_list(save_root=root_raw, path=src, dpi=dpi)
-
-        scheme_ = make_a5_scheme(len(image_paths), batch)
-        scheme = [
-            (name, [(p.left.payload, p.right.payload) for p in pages])
-            for (name, pages) in scheme_
-        ]
-
         root_pages = Path(tmpdir) / "pages"
         root_pages.mkdir(parents=False, exist_ok=False)
-        for name, pages_scheme in scheme:
+        for name, pages_scheme in scheme.items():
             page_paths = [
                 as2_a5_page(
                     image1_path=None if left is None else image_paths[left],
