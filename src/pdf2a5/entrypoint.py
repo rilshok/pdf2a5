@@ -32,7 +32,7 @@ def pdf2a5(
         typer.Option(
             help="DPI (dots per inch) of the output PDFs.",
         ),
-    ] = 120,
+    ] = 300,
     batch: Annotated[
         int,
         typer.Option(
