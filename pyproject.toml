@@ -1,6 +1,6 @@
 [project]
 name = "pdf2a5"
-version = "0.1.0"
+version = "0.1.1"
 description = "PDF to A5 Booklet Converter"
 readme = "README.md"
 license = {text = "MIT"}
