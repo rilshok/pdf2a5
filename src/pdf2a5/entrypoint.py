@@ -39,6 +39,12 @@ def pdf2a5(
             help="Number of pages to process in a single batch.",
         ),
     ] = 4,
+    shift: Annotated[
+        float,
+        typer.Option(
+            help="Shift towards the nearest short side of the sheet.",
+        ),
+    ] = 0.0,
     workers: Annotated[
         int,
         typer.Option(
@@ -68,7 +74,14 @@ def pdf2a5(
             _bad_parameter(f"Destination {dst} is not a directory")
         dst.mkdir(parents=False, exist_ok=True)
 
-    convert_pdf_to_a5(src=src, dst_root=dst, dpi=dpi, batch=batch, workers=workers)
+    convert_pdf_to_a5(
+        src=src,
+        dst_root=dst,
+        dpi=dpi,
+        batch=batch,
+        workers=workers,
+        shift_mm=shift,
+    )
 
 
 def main() -> None:  # noqa: D103

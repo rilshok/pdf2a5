@@ -140,12 +140,15 @@ def as2_a5_page(
     image2_path: Path | None,
     dpi: int,
     save_root: Path,
+    shift_mm: float = 50.0,
 ) -> Path:
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
     image2 = _empty_image() if image2_path is None else Image.open(image2_path)
     a4_width_mm = 297
     a4_height_mm = 210
+
+    shift_px = int(shift_mm * dpi / 25.4)
 
     # Converting dimensions to pixels with DPI
     a4_width_px = int(a4_width_mm * dpi / 25.4)
@@ -168,7 +171,10 @@ def as2_a5_page(
         )
 
     # position for the first image (left)
-    canvas.paste(image1, (0, a4_height_px // 2 - image1.height // 2))
+    canvas.paste(
+        image1,
+        (0 - shift_px, a4_height_px // 2 - image1.height // 2),
+    )
 
     # the second image will be on the right
     image2_width, image2_height = image2.size
@@ -184,7 +190,10 @@ def as2_a5_page(
     # position for the second image (right, maximum right)
     canvas.paste(
         image2,
-        (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2),
+        (
+            a4_width_px - image2.width + shift_px,
+            a4_height_px // 2 - image2.height // 2,
+        ),
     )
 
     save_path = save_root / f"{_random_name()}.png"
@@ -226,6 +235,7 @@ def _build_sub_pdf(
     pages: list[tuple[int | None, int | None]],
     save_path: Path,
     dpi: int,
+    shift_mm: float,
 ) -> None:
     page_nums = [n for page in pages for n in page if n is not None]
     with TemporaryDirectory() as tmpdir:
@@ -249,6 +259,7 @@ def _build_sub_pdf(
                 image2_path=single_page_paths[right],
                 dpi=dpi,
                 save_root=root_temp,
+                shift_mm=shift_mm,
             )
             for left, right in pages
         ]
@@ -260,6 +271,7 @@ def convert_pdf_to_a5(
     dst_root: Path,
     dpi: int,
     batch: int,
+    shift_mm: float,
     workers: int,
 ) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
@@ -274,6 +286,7 @@ def convert_pdf_to_a5(
                 pages=pages,
                 save_path=dst_root / f"{name}.pdf",
                 dpi=dpi,
+                shift_mm=shift_mm,
             )
             for name, pages in scheme.items()
         ]
