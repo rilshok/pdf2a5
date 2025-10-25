@@ -2,6 +2,7 @@
 
 import warnings
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -13,15 +14,35 @@ def _bad_parameter(msg: str) -> None:
 
 
 def pdf2a5(
-    source: Path,
-    dest: Path | None = None,
-    dpi: int = 120,
-    batch: int = 5,
+    source: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to the source PDF file.",
+        ),
+    ],
+    dest: Annotated[
+        Path | None,
+        typer.Argument(
+            help="Path to the destination directory.",
+        ),
+    ] = Path(),
+    dpi: Annotated[
+        int,
+        typer.Option(
+            help="DPI (dots per inch) of the output PDFs.",
+        ),
+    ] = 120,
+    batch: Annotated[
+        int,
+        typer.Option(
+            help="Number of pages to process in a single batch.",
+        ),
+    ] = 2,
 ) -> None:
     """Convert a PDF file to A5 booklet format."""
     source = source.expanduser().absolute()
     dest = dest.expanduser().absolute() if dest else source.parent
-    if not source.exists():
+    if not source.is_file():
         _bad_parameter(f"Source {source} does not exist")
     if not dest.is_dir():
         _bad_parameter(f"Destination {dest} is not a directory")
