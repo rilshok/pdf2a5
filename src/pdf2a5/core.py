@@ -151,7 +151,9 @@ def as2_a5_page(
     image1_path: Path | None,
     image2_path: Path | None,
     dpi: int,
-) -> Image.Image:
+    save_root: Path,
+    save_name: str,
+) -> Path:
     # TODO(@rilshok): change image1 and image2 to path
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
@@ -199,17 +201,23 @@ def as2_a5_page(
         (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2),
     )
 
-    return canvas
+    save_path = save_root / f"{save_name}.png"
+    canvas.save(save_path)
+    return save_path
 
 
-def _write_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
+def _write_pdf(root: Path, name: str, image_paths: list[Path]) -> Path:
+    image_list = [Image.open(p) for p in image_paths]
     save_path = root / f"{name}.pdf"
-    images[0].save(save_path, save_all=True, append_images=images[1:])
+    image_list[0].save(save_path, save_all=True, append_images=image_list[1:])
+    return save_path
 
 
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
     with TemporaryDirectory() as tmpdir:
-        image_paths = pdf_to_image_list(save_root=Path(tmpdir), path=src, dpi=dpi)
+        root_raw = Path(tmpdir) / "raw"
+        root_raw.mkdir(parents=False, exist_ok=False)
+        image_paths = pdf_to_image_list(save_root=root_raw, path=src, dpi=dpi)
 
         scheme_ = make_a5_scheme(len(image_paths), batch)
         scheme = [
@@ -217,13 +225,17 @@ def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
             for (name, pages) in scheme_
         ]
 
+        root_pages = Path(tmpdir) / "pages"
+        root_pages.mkdir(parents=False, exist_ok=False)
         for name, pages_scheme in scheme:
-            images__ = [
+            page_paths = [
                 as2_a5_page(
                     image1_path=None if left is None else image_paths[left],
                     image2_path=None if right is None else image_paths[right],
                     dpi=dpi,
+                    save_root=root_pages,
+                    save_name=f"{name}_{i:05}",
                 )
-                for left, right in pages_scheme
+                for i, (left, right) in enumerate(pages_scheme)
             ]
-            _write_pdf(root=dst_root, name=name, images=images__)
+            _write_pdf(root=dst_root, name=name, image_paths=page_paths)
