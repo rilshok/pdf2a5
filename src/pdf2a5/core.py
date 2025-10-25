@@ -3,6 +3,7 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import fitz  # PyMuPDF
 from PIL import Image
@@ -117,29 +118,44 @@ def make_a5_scheme(
         yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
 
 
-def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
+def pdf_to_image_list(save_root: Path, path: Path, dpi: int) -> list[Path]:
     # TODO(@rilshok): reduce RAM consumption
-    result: list[Image.Image] = []
+    result: list[Path] = []
 
     # TODO(@rilshok): open with context manager?
     pdf_document = fitz.open(path.as_posix())
 
-    for page_number in range(len(pdf_document)):
-        page = pdf_document.load_page(page_number)
+    try:
+        for page_number in range(len(pdf_document)):
+            page = pdf_document.load_page(page_number)
 
-        image = page.get_pixmap(dpi=dpi)
-        img_data = image.samples
-        pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
+            image = page.get_pixmap(dpi=dpi)
+            img_data = image.samples
+            pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
 
-        result.append(pil_image)
+            save_path = save_root / f"page_{page_number:05}.png"
+            pil_image.save(save_path)
 
-    pdf_document.close()
+            result.append(save_path)
+    finally:
+        pdf_document.close()
 
     return result
 
 
-def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Image:
+def _empty_image() -> Image.Image:
+    return Image.new("RGB", (1, 1), "white")
+
+
+def as2_a5_page(
+    image1_path: Path | None,
+    image2_path: Path | None,
+    dpi: int,
+) -> Image.Image:
+    # TODO(@rilshok): change image1 and image2 to path
     # A4 sheet dimensions in millimetres
+    image1 = _empty_image() if image1_path is None else Image.open(image1_path)
+    image2 = _empty_image() if image2_path is None else Image.open(image2_path)
     a4_width_mm = 297
     a4_height_mm = 210
 
@@ -191,26 +207,23 @@ def _write_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
     images[0].save(save_path, save_all=True, append_images=images[1:])
 
 
-def _empty_image() -> Image.Image:
-    return Image.new("RGB", (1, 1), "white")
-
-
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
-    images = pdf_to_image_list(path=src, dpi=dpi)
+    with TemporaryDirectory() as tmpdir:
+        image_paths = pdf_to_image_list(save_root=Path(tmpdir), path=src, dpi=dpi)
 
-    scheme_ = make_a5_scheme(len(images), batch)
-    scheme = [
-        (name, [(p.left.payload, p.right.payload) for p in pages])
-        for (name, pages) in scheme_
-    ]
-
-    for name, pages_scheme in scheme:
-        images__ = [
-            as2_a5_page(
-                image1=_empty_image() if left is None else images[left],
-                image2=_empty_image() if right is None else images[right],
-                dpi=dpi,
-            )
-            for left, right in pages_scheme
+        scheme_ = make_a5_scheme(len(image_paths), batch)
+        scheme = [
+            (name, [(p.left.payload, p.right.payload) for p in pages])
+            for (name, pages) in scheme_
         ]
-        _write_pdf(root=dst_root, name=name, images=images__)
+
+        for name, pages_scheme in scheme:
+            images__ = [
+                as2_a5_page(
+                    image1_path=None if left is None else image_paths[left],
+                    image2_path=None if right is None else image_paths[right],
+                    dpi=dpi,
+                )
+                for left, right in pages_scheme
+            ]
+            _write_pdf(root=dst_root, name=name, images=images__)
