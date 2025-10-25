@@ -39,6 +39,12 @@ def pdf2a5(
             help="Number of pages to process in a single batch.",
         ),
     ] = 4,
+    workers: Annotated[
+        int,
+        typer.Option(
+            help="Number of worker processes to use.",
+        ),
+    ] = 4,
 ) -> None:
     """Convert a PDF file to A5 booklet format."""
     src = src.expanduser().absolute()
@@ -50,6 +56,8 @@ def pdf2a5(
         _bad_parameter(f"Batch {batch} is too low")
     if batch > 10:
         warnings.warn(f"Batch {batch} is too high", stacklevel=2)
+    if workers < 1:
+        _bad_parameter(f"Workers {workers} is too low")
 
     if dst is None:
         name = slugify(src.name).removesuffix("-pdf")
@@ -60,7 +68,7 @@ def pdf2a5(
             _bad_parameter(f"Destination {dst} is not a directory")
         dst.mkdir(parents=False, exist_ok=True)
 
-    convert_pdf_to_a5(src=src, dst_root=dst, dpi=dpi, batch=batch)
+    convert_pdf_to_a5(src=src, dst_root=dst, dpi=dpi, batch=batch, workers=workers)
 
 
 def main() -> None:  # noqa: D103

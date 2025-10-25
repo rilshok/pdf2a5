@@ -255,12 +255,18 @@ def _build_sub_pdf(
         _write_pdf(save_path=save_path, image_paths=page_paths)
 
 
-def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
+def convert_pdf_to_a5(
+    src: Path,
+    dst_root: Path,
+    dpi: int,
+    batch: int,
+    workers: int,
+) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
         for name, pages in make_a5_scheme(_read_number_of_pages(src), batch)
     }
-    with ProcessPoolExecutor(max_workers=8) as executor:
+    with ProcessPoolExecutor(max_workers=workers) as executor:
         futures = [
             executor.submit(
                 _build_sub_pdf,
