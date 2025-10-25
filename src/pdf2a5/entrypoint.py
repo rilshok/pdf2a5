@@ -55,9 +55,14 @@ def pdf2a5(
         bool,
         typer.Option(
             help="Crop pages to remove white margins.",
-            is_flag=True,
         ),
     ] = False,
+    skip_crop: Annotated[
+        str,
+        typer.Option(
+            help="Pages to skip cropping, comma-separated list of page numbers.",
+        ),
+    ] = "",
     workers: Annotated[
         int,
         typer.Option(
@@ -75,6 +80,15 @@ def pdf2a5(
         _bad_parameter(f"Batch {batch} is too low")
     if batch > 10:
         warnings.warn(f"Batch {batch} is too high", stacklevel=2)
+
+    if skip_crop:
+        try:
+            skip_crop_pages: set[int] = {int(v) - 1 for v in skip_crop.split(",")}
+        except Exception:  # noqa: BLE001
+            _bad_parameter(f"Cannot parse skip-crop pages: {skip_crop}")
+    else:
+        skip_crop_pages = set()
+
     if workers < 1:
         _bad_parameter(f"Workers {workers} is too low")
 
@@ -96,6 +110,7 @@ def pdf2a5(
         shift_mm=shift,
         crop=crop,
         workers=workers,
+        skip_crop=skip_crop_pages,
     )
 
 

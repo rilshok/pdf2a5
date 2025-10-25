@@ -36,12 +36,13 @@ Options:
 - `--fold` (optional float): The offset in millimeters from the sheet bend. This helps to ensure the necessary distance from the bend of the sheet.
 - `--shift` (optional float): The distance in millimeters by which A5 page sides will be shifted toward the nearest short side of the A4 sheet. Useful when you need to increase the distance at the fold of the sheet. Negative values can also be used.
 - `--crop` (optional boolean): If set, the pages will be cropped to remove any white margins.
+-- `--skip-crop` (optional string): A comma-separated list of page numbers (1-based) that should not be cropped, even if the `--crop` option is enabled.
 - `--workers` (optional integer): The number of worker processes to use for parallel processing. The default value is 4.
 
 ## Examples
 
-We have a `document.pdf` whose pages contain margins (white borders). We want to crop them, but ensure our own indents in accordance with the following rule: there must be a 5 mm margin from the edge of the page and a 20 mm margin from the fold of the sheet. To achieve this result, we need to run the program with the following launch parameters:
+We have a `document.pdf` whose pages contain margins (white borders). We want to crop them, but ensure our own indents in accordance with the following rule: there must be a 5 mm margin from the edge of the page and a 20 mm margin from the fold of the sheet. The title on the first and second pages is on a white background, so we don't want to crop them. To achieve this result, we need to run the program with the following launch parameters:
 
 ```bash
-pdf2a5 document.pdf --crop --fold 25 --shift -5
+pdf2a5 document.pdf --crop --fold 25 --shift -5 --skip-crop 1,2
 ```

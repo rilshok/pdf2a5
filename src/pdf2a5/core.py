@@ -11,6 +11,9 @@ import fitz  # PyMuPDF
 from PIL import Image, ImageChops
 
 
+from collections.abc import Container
+
+
 def _random_name() -> str:
     return os.urandom(32).hex()
 
@@ -225,6 +228,7 @@ def _export_page_images(
     *,
     dpi: int,
     crop: bool,
+    skip_crop: Container[int],
 ) -> list[Path]:
     result: list[Path] = []
     document = fitz.open(src.as_posix())
@@ -235,7 +239,7 @@ def _export_page_images(
             img_data = image.samples
             size = (image.width, image.height)
             pil_image = Image.frombytes("RGB", size, img_data)
-            if crop:
+            if crop and page_number not in skip_crop:
                 pil_image = trim_white_borders(pil_image)
             save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
@@ -254,6 +258,7 @@ def _build_sub_pdf(
     fold_mm: float,
     shift_mm: float,
     crop: bool,
+    skip_crop: Container[int],
 ) -> None:
     page_nums = [n for page in pages for n in page if n is not None]
     with TemporaryDirectory() as tmpdir:
@@ -267,6 +272,7 @@ def _build_sub_pdf(
                     save_root=root_temp,
                     dpi=dpi,
                     crop=crop,
+                    skip_crop=skip_crop,
                 ),
                 strict=True,
             )
@@ -296,6 +302,7 @@ def convert_pdf_to_a5(
     shift_mm: float,
     crop: bool,
     workers: int,
+    skip_crop: Container[int],
 ) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
@@ -312,6 +319,7 @@ def convert_pdf_to_a5(
                 fold_mm=fold_mm,
                 shift_mm=shift_mm,
                 crop=crop,
+                skip_crop=skip_crop,
             )
             for name, pages in scheme.items()
         ]
