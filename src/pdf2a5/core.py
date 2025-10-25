@@ -1,22 +1,23 @@
 import itertools
 import math
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 import fitz  # PyMuPDF
 from PIL import Image
 
-# TODO: the code requires complete refactoring, built on scratch
+# TODO(@rilshok): the code requires complete refactoring, built on scratch
 
 
-def split_scheme(page_count, sheet_group):
+def split_scheme(page_count: int, sheet_group: int) -> list[int]:
     sheets_count = math.ceil(page_count / 4)
     groups = [sheet_group] * math.ceil(sheets_count / sheet_group)
     idxs = itertools.cycle(range(len(groups) - 1, -1, -1))
     while sum(groups) > sheets_count:
         idx = next(idxs)
         groups[idx] = groups[idx] - 1
-    result = []
+    result: list[int] = []
     for i, p in enumerate(groups[::-1]):
         if i % 2:
             result.append(p)
@@ -25,9 +26,9 @@ def split_scheme(page_count, sheet_group):
     return result
 
 
-def destribute_pages(page_count, scheme: list[int]):
+def destribute_pages(page_count: int, scheme: list[int]) -> list[list[int]]:
     pages = list(range(page_count))
-    pages_split = []
+    pages_split: list[list[int]] = []
 
     current = 0
     for group in scheme:
@@ -55,27 +56,27 @@ class Sheet:
     back: Page
 
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  2; 3; 4; 1;
-# >> 0br 0fl 0fr 0bl
+# >> 0br 0al 0ar 0bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  4; 5; 6; 3;
 # 1  2; 7; 8; 1;
-# >> 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl
+# >> 1br 1al 0br 0al 0ar 0bl 1ar 1bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  6; 7; 8; 5;
 # 1  4; 9;10; 3;
 # 2  2;11;12; 1;
-# >> 2br 2fl 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl 2fr 2bl
+# >> 2br 2al 1br 1al 0br 0al 0ar 0bl 1ar 1bl 2ar 2bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  8; 9;10; 7;
 # 1  6;11;12; 5;
 # 2  4;13;14; 3;
 # 3  2;15;16; 1;
-# >> 3br 3fl 2br 2fl 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl 2fr 2bl 3fr 3bl
+# >> 3br 3al 2br 2al 1br 1al 0br 0al 0ar 0bl 1ar 1bl 2ar 2bl 3ar 3bl
 
 
 def make_sheets(sheet_count: int, pages: list[int]):
@@ -87,7 +88,7 @@ def make_sheets(sheet_count: int, pages: list[int]):
         for _ in range(sheet_count)
     ]
 
-    contents = []
+    contents: list[Content] = []
     for sheet in sheets[::-1]:
         contents.append(sheet.back.right)
         contents.append(sheet.front.left)
@@ -96,42 +97,48 @@ def make_sheets(sheet_count: int, pages: list[int]):
         contents.append(sheet.front.right)
         contents.append(sheet.back.left)
 
-    for content, page in zip(contents, pages):
+    for content, page in zip(contents, pages, strict=True):
         content.payload = page
 
+    # TODO(@rilshok): why contents is needed?
     return sheets
 
 
-def make_a5_scheme(page_count, sheet_group):
+def make_a5_scheme(
+    page_count: int,
+    sheet_group: int,
+) -> Iterator[tuple[str, list[Page]]]:
     scheme = split_scheme(page_count, sheet_group)
     page_nums = destribute_pages(page_count, scheme)
 
-    for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums)):
+    for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums, strict=True)):
         block_sheets = make_sheets(sheet_count, pages)
-        yield f"{block:03}_front", [sheet.front for sheet in block_sheets]
-        yield f"{block:03}_back", [sheet.back for sheet in block_sheets]
+        yield f"{block:03}_a", [sheet.front for sheet in block_sheets]
+        yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
 
 
-def pdf_to_image_list(pdf_file, dpi):
-    image_list = []
+def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
+    # TODO(@rilshok): reduce RAM consumption
+    result: list[Image.Image] = []
 
-    pdf_document = fitz.open(pdf_file)
+    # TODO(@rilshok): open with context manager?
+    pdf_document = fitz.open(path.as_posix())
 
     for page_number in range(len(pdf_document)):
         page = pdf_document.load_page(page_number)
 
         image = page.get_pixmap(dpi=dpi)
         img_data = image.samples
-        pil_image = Image.frombytes("RGB", [image.width, image.height], img_data)
+        pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
 
-        image_list.append(pil_image)
+        result.append(pil_image)
 
     pdf_document.close()
 
-    return image_list
+    return result
 
 
-def as2_a5_page(image1, image2, dpi):
+def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Image:
     # A4 sheet dimensions in millimetres
     a4_width_mm = 297
     a4_height_mm = 210
@@ -153,7 +160,7 @@ def as2_a5_page(image1, image2, dpi):
         scale_factor = min(max_width / image1_width, max_height / image1_height)
         image1 = image1.resize(
             (int(image1_width * scale_factor), int(image1_height * scale_factor)),
-            Image.LANCZOS,
+            resample=Image.Resampling.LANCZOS,
         )
 
     # position for the first image (left)
@@ -167,7 +174,7 @@ def as2_a5_page(image1, image2, dpi):
         scale_factor = min(max_width / image2_width, max_height / image2_height)
         image2 = image2.resize(
             (int(image2_width * scale_factor), int(image2_height * scale_factor)),
-            Image.LANCZOS,
+            resample=Image.Resampling.LANCZOS,
         )
 
     # position for the second image (right, maximum right)
@@ -179,14 +186,17 @@ def as2_a5_page(image1, image2, dpi):
     return canvas
 
 
-def images_to_pdf(name, images):
-    pdf_filename = f"{name}.pdf"
-    images[0].save(pdf_filename, save_all=True, append_images=images[1:])
+def _write_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
+    save_path = root / f"{name}.pdf"
+    images[0].save(save_path, save_all=True, append_images=images[1:])
 
 
-def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int):
-    images = pdf_to_image_list(str(source), dpi=dpi)
-    batch = 5
+def _empty_image() -> Image.Image:
+    return Image.new("RGB", (1, 1), "white")
+
+
+def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
+    images = pdf_to_image_list(path=src, dpi=dpi)
 
     scheme_ = make_a5_scheme(len(images), batch)
     scheme = [
@@ -194,19 +204,13 @@ def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int):
         for (name, pages) in scheme_
     ]
 
-    preresults = {
-        name: [
+    for name, pages_scheme in scheme:
+        images__ = [
             as2_a5_page(
-                images[left] if left is not None else Image.new("RGB", (1, 1), "white"),
-                images[right]
-                if right is not None
-                else Image.new("RGB", (1, 1), "white"),
+                image1=_empty_image() if left is None else images[left],
+                image2=_empty_image() if right is None else images[right],
                 dpi=dpi,
             )
             for left, right in pages_scheme
         ]
-        for (name, pages_scheme) in scheme
-    }
-
-    for name, images__ in preresults.items():
-        images_to_pdf(str(dest / name), images__)
+        _write_pdf(root=dst_root, name=name, images=images__)
