@@ -45,6 +45,13 @@ def pdf2a5(
             help="Shift towards the nearest short side of the sheet.",
         ),
     ] = 0.0,
+    crop: Annotated[
+        bool,
+        typer.Option(
+            help="Crop pages to remove white margins.",
+            is_flag=True,
+        ),
+    ] = False,
     workers: Annotated[
         int,
         typer.Option(
@@ -81,6 +88,7 @@ def pdf2a5(
         batch=batch,
         workers=workers,
         shift_mm=shift,
+        crop=crop,
     )
 
 

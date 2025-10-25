@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageChops
 
 
 def _random_name() -> str:
@@ -207,11 +207,23 @@ def _write_pdf(save_path: Path, image_paths: list[Path]) -> Path:
     return save_path
 
 
+def trim_white_borders(image: Image.Image) -> Image.Image:
+    bg = Image.new(image.mode, image.size, (255, 255, 255))
+    diff = ImageChops.difference(image, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        trimmed_image = image.crop(bbox)
+        return trimmed_image
+    return image
+
+
 def _export_page_images(
     src: Path,
     pages: list[int],
     save_root: Path,
+    *,
     dpi: int,
+    crop: bool,
 ) -> list[Path]:
     result: list[Path] = []
     document = fitz.open(src.as_posix())
@@ -222,6 +234,8 @@ def _export_page_images(
             img_data = image.samples
             size = (image.width, image.height)
             pil_image = Image.frombytes("RGB", size, img_data)
+            if crop:
+                pil_image = trim_white_borders(pil_image)
             save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
             result.append(save_path)
@@ -233,9 +247,11 @@ def _export_page_images(
 def _build_sub_pdf(
     src: Path,
     pages: list[tuple[int | None, int | None]],
+    *,
     save_path: Path,
     dpi: int,
     shift_mm: float,
+    crop: bool,
 ) -> None:
     page_nums = [n for page in pages for n in page if n is not None]
     with TemporaryDirectory() as tmpdir:
@@ -248,6 +264,7 @@ def _build_sub_pdf(
                     pages=page_nums,
                     save_root=root_temp,
                     dpi=dpi,
+                    crop=crop,
                 ),
                 strict=True,
             )
@@ -269,10 +286,12 @@ def _build_sub_pdf(
 def convert_pdf_to_a5(
     src: Path,
     dst_root: Path,
+    *,
     dpi: int,
     batch: int,
     shift_mm: float,
     workers: int,
+    crop: bool,
 ) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
@@ -287,6 +306,7 @@ def convert_pdf_to_a5(
                 save_path=dst_root / f"{name}.pdf",
                 dpi=dpi,
                 shift_mm=shift_mm,
+                crop=crop,
             )
             for name, pages in scheme.items()
         ]
