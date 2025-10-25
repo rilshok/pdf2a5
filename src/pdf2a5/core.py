@@ -1,5 +1,6 @@
 import itertools
 import math
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +9,9 @@ from tempfile import TemporaryDirectory
 import fitz  # PyMuPDF
 from PIL import Image
 
-# TODO(@rilshok): the code requires complete refactoring, built on scratch
+
+def _random_name() -> str:
+    return os.urandom(32).hex()
 
 
 def split_scheme(page_count: int, sheet_group: int) -> list[int]:
@@ -119,7 +122,6 @@ def make_a5_scheme(
 
 
 def pdf_to_image_list(save_root: Path, path: Path, dpi: int) -> list[Path]:
-    # TODO(@rilshok): reduce RAM consumption
     result: list[Path] = []
 
     # TODO(@rilshok): open with context manager?
@@ -133,7 +135,7 @@ def pdf_to_image_list(save_root: Path, path: Path, dpi: int) -> list[Path]:
             img_data = image.samples
             pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
 
-            save_path = save_root / f"page_{page_number:05}.png"
+            save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
 
             result.append(save_path)
@@ -152,7 +154,6 @@ def as2_a5_page(
     image2_path: Path | None,
     dpi: int,
     save_root: Path,
-    save_name: str,
 ) -> Path:
     # TODO(@rilshok): change image1 and image2 to path
     # A4 sheet dimensions in millimetres
@@ -201,7 +202,7 @@ def as2_a5_page(
         (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2),
     )
 
-    save_path = save_root / f"{save_name}.png"
+    save_path = save_root / f"{_random_name()}.png"
     canvas.save(save_path)
     return save_path
 
@@ -234,8 +235,7 @@ def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
                     image2_path=None if right is None else image_paths[right],
                     dpi=dpi,
                     save_root=root_pages,
-                    save_name=f"{name}_{i:05}",
                 )
-                for i, (left, right) in enumerate(pages_scheme)
+                for left, right in pages_scheme
             ]
             _write_pdf(root=dst_root, name=name, image_paths=page_paths)
