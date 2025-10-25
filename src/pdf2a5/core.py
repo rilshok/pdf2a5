@@ -6,7 +6,7 @@ from pathlib import Path
 import fitz  # PyMuPDF
 from PIL import Image
 
-# TODO: the code requires complete refactoring, built on scratch
+# TODO(@rilshok): the code requires complete refactoring, built on scratch
 
 
 def split_scheme(page_count, sheet_group):

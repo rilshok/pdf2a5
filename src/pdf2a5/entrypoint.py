@@ -1,13 +1,12 @@
+import warnings
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from .core import convert_pdf_to_a5
-import warnings
 
 
-def pdf2a5(source: Path, dest: Optional[Path] = None, dpi: int = 120, batch: int = 5):
+def pdf2a5(source: Path, dest: Path | None = None, dpi: int = 120, batch: int = 5):
     source = source.expanduser().absolute()
     dest = dest.expanduser().absolute() if dest else source.parent
     if not source.exists():
