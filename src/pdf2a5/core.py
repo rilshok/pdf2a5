@@ -112,10 +112,11 @@ def make_a5_scheme(page_count, sheet_group):
         yield f"{block:03}_back", [sheet.back for sheet in block_sheets]
 
 
-def pdf_to_image_list(pdf_file, dpi):
-    image_list = []
+def pdf_to_image_list(pdf_file: Path, dpi: int) -> list[Image.Image]:
+    result: list[Image.Image] = []
 
-    pdf_document = fitz.open(pdf_file)
+    # TODO(@rilshok): open with context manager?
+    pdf_document = fitz.open(pdf_file.as_posix())
 
     for page_number in range(len(pdf_document)):
         page = pdf_document.load_page(page_number)
@@ -124,11 +125,11 @@ def pdf_to_image_list(pdf_file, dpi):
         img_data = image.samples
         pil_image = Image.frombytes("RGB", [image.width, image.height], img_data)
 
-        image_list.append(pil_image)
+        result.append(pil_image)
 
     pdf_document.close()
 
-    return image_list
+    return result
 
 
 def as2_a5_page(image1, image2, dpi):
@@ -184,8 +185,8 @@ def images_to_pdf(name, images):
     images[0].save(pdf_filename, save_all=True, append_images=images[1:])
 
 
-def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int):
-    images = pdf_to_image_list(str(source), dpi=dpi)
+def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int) -> None:
+    images = pdf_to_image_list(pdf_file=source, dpi=dpi)
 
     scheme_ = make_a5_scheme(len(images), batch)
     scheme = [
