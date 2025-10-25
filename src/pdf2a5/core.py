@@ -118,6 +118,7 @@ def make_a5_scheme(
 
 
 def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
+    # TODO(@rilshok): reduce RAM consumption
     result: list[Image.Image] = []
 
     # TODO(@rilshok): open with context manager?
@@ -128,7 +129,7 @@ def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
 
         image = page.get_pixmap(dpi=dpi)
         img_data = image.samples
-        pil_image = Image.frombytes("RGB", [image.width, image.height], img_data)
+        pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
 
         result.append(pil_image)
 
