@@ -2,6 +2,7 @@ import itertools
 import math
 import os
 from collections.abc import Iterator
+from concurrent.futures import FIRST_EXCEPTION, ProcessPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -260,6 +261,21 @@ def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
         name: [(p.left.payload, p.right.payload) for p in pages]
         for name, pages in make_a5_scheme(_read_number_of_pages(src), batch)
     }
-    for name, pages in scheme.items():
-        dst_path = dst_root / f"{name}.pdf"
-        _build_sub_pdf(src=src, pages=pages, save_path=dst_path, dpi=dpi)
+    with ProcessPoolExecutor(max_workers=8) as executor:
+        futures = [
+            executor.submit(
+                _build_sub_pdf,
+                src=src,
+                pages=pages,
+                save_path=dst_root / f"{name}.pdf",
+                dpi=dpi,
+            )
+            for name, pages in scheme.items()
+        ]
+        done, not_done = wait(futures, return_when=FIRST_EXCEPTION)
+        for future in done:
+            if (exception := future.exception()) is None:
+                continue
+            for f in not_done:
+                f.cancel()
+            raise exception
