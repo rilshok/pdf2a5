@@ -1,5 +1,6 @@
 import itertools
 import math
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -102,7 +103,10 @@ def make_sheets(sheet_count: int, pages: list[int]):
     return sheets
 
 
-def make_a5_scheme(page_count, sheet_group):
+def make_a5_scheme(
+    page_count: int,
+    sheet_group: int,
+) -> Iterator[tuple[str, list[Sheet]]]:
     scheme = split_scheme(page_count, sheet_group)
     page_nums = destribute_pages(page_count, scheme)
 
@@ -112,11 +116,11 @@ def make_a5_scheme(page_count, sheet_group):
         yield f"{block:03}_back", [sheet.back for sheet in block_sheets]
 
 
-def pdf_to_image_list(pdf_file: Path, dpi: int) -> list[Image.Image]:
+def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
     result: list[Image.Image] = []
 
     # TODO(@rilshok): open with context manager?
-    pdf_document = fitz.open(pdf_file.as_posix())
+    pdf_document = fitz.open(path.as_posix())
 
     for page_number in range(len(pdf_document)):
         page = pdf_document.load_page(page_number)
@@ -186,7 +190,7 @@ def images_to_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
 
 
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
-    images = pdf_to_image_list(pdf_file=src, dpi=dpi)
+    images = pdf_to_image_list(path=src, dpi=dpi)
 
     scheme_ = make_a5_scheme(len(images), batch)
     scheme = [
