@@ -185,9 +185,13 @@ def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Ima
     return canvas
 
 
-def images_to_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
+def _write_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
     save_path = root / f"{name}.pdf"
     images[0].save(save_path, save_all=True, append_images=images[1:])
+
+
+def _empty_image() -> Image.Image:
+    return Image.new("RGB", (1, 1), "white")
 
 
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
@@ -199,19 +203,13 @@ def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
         for (name, pages) in scheme_
     ]
 
-    preresults = {
-        name: [
+    for name, pages_scheme in scheme:
+        images__ = [
             as2_a5_page(
-                images[left] if left is not None else Image.new("RGB", (1, 1), "white"),
-                images[right]
-                if right is not None
-                else Image.new("RGB", (1, 1), "white"),
+                image1=_empty_image() if left is None else images[left],
+                image2=_empty_image() if right is None else images[right],
                 dpi=dpi,
             )
             for left, right in pages_scheme
         ]
-        for (name, pages_scheme) in scheme
-    }
-
-    for name, images__ in preresults.items():
-        images_to_pdf(root=dst_root, name=name, images=images__)
+        _write_pdf(root=dst_root, name=name, images=images__)
