@@ -55,27 +55,27 @@ class Sheet:
     back: Page
 
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  2; 3; 4; 1;
-# >> 0br 0fl 0fr 0bl
+# >> 0br 0al 0ar 0bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  4; 5; 6; 3;
 # 1  2; 7; 8; 1;
-# >> 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl
+# >> 1br 1al 0br 0al 0ar 0bl 1ar 1bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  6; 7; 8; 5;
 # 1  4; 9;10; 3;
 # 2  2;11;12; 1;
-# >> 2br 2fl 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl 2fr 2bl
+# >> 2br 2al 1br 1al 0br 0al 0ar 0bl 1ar 1bl 2ar 2bl
 
-#   fl;fr;bl;br;
+#   al;ar;bl;br;
 # 0  8; 9;10; 7;
 # 1  6;11;12; 5;
 # 2  4;13;14; 3;
 # 3  2;15;16; 1;
-# >> 3br 3fl 2br 2fl 1br 1fl 0br 0fl 0fr 0bl 1fr 1bl 2fr 2bl 3fr 3bl
+# >> 3br 3al 2br 2al 1br 1al 0br 0al 0ar 0bl 1ar 1bl 2ar 2bl 3ar 3bl
 
 
 def make_sheets(sheet_count: int, pages: list[int]):
