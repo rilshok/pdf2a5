@@ -193,8 +193,8 @@ def as2_a5_page(
 
 
 def _write_pdf(save_path: Path, image_paths: list[Path]) -> Path:
-    image_list = [Image.open(p) for p in image_paths]
-    image_list[0].save(save_path, save_all=True, append_images=image_list[1:])
+    head, tail = Image.open(image_paths[0]), (Image.open(p) for p in image_paths[1:])
+    head.save(save_path, save_all=True, append_images=tail)
     return save_path
 
 
@@ -211,11 +211,10 @@ def _export_page_images(
             page = document.load_page(page_number)
             image = page.get_pixmap(dpi=dpi)
             img_data = image.samples
-            pil_image = Image.frombytes("RGB", (image.width, image.height), img_data)
-
+            size = (image.width, image.height)
+            pil_image = Image.frombytes("RGB", size, img_data)
             save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
-
             result.append(save_path)
     finally:
         document.close()
