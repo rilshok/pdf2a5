@@ -3,7 +3,6 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
 import fitz  # PyMuPDF
 from PIL import Image
 
@@ -106,14 +105,14 @@ def make_sheets(sheet_count: int, pages: list[int]):
 def make_a5_scheme(
     page_count: int,
     sheet_group: int,
-) -> Iterator[tuple[str, list[Sheet]]]:
+) -> Iterator[tuple[str, list[Page]]]:
     scheme = split_scheme(page_count, sheet_group)
     page_nums = destribute_pages(page_count, scheme)
 
-    for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums)):
+    for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums, strict=True)):
         block_sheets = make_sheets(sheet_count, pages)
-        yield f"{block:03}_front", [sheet.front for sheet in block_sheets]
-        yield f"{block:03}_back", [sheet.back for sheet in block_sheets]
+        yield f"{block:03}_a", [sheet.front for sheet in block_sheets]
+        yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
 
 
 def pdf_to_image_list(path: Path, dpi: int) -> list[Image.Image]:
