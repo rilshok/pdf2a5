@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from slugify import slugify
 
 from .core import convert_pdf_to_a5
 
@@ -14,18 +15,18 @@ def _bad_parameter(msg: str) -> None:
 
 
 def pdf2a5(
-    source: Annotated[
+    src: Annotated[
         Path,
         typer.Argument(
             help="Path to the source PDF file.",
         ),
     ],
-    dest: Annotated[
+    dst: Annotated[
         Path | None,
         typer.Argument(
             help="Path to the destination directory.",
         ),
-    ] = Path(),
+    ] = None,
     dpi: Annotated[
         int,
         typer.Option(
@@ -37,22 +38,29 @@ def pdf2a5(
         typer.Option(
             help="Number of pages to process in a single batch.",
         ),
-    ] = 2,
+    ] = 4,
 ) -> None:
     """Convert a PDF file to A5 booklet format."""
-    source = source.expanduser().absolute()
-    dest = dest.expanduser().absolute() if dest else source.parent
-    if not source.is_file():
-        _bad_parameter(f"Source {source} does not exist")
-    if not dest.is_dir():
-        _bad_parameter(f"Destination {dest} is not a directory")
+    src = src.expanduser().absolute()
+    if not src.is_file():
+        _bad_parameter(f"Source {src} does not exist")
     if dpi < 72:
         _bad_parameter(f"DPI {dpi} is too low")
     if batch < 1:
         _bad_parameter(f"Batch {batch} is too low")
     if batch > 10:
         warnings.warn(f"Batch {batch} is too high", stacklevel=2)
-    convert_pdf_to_a5(source=source, dest=dest, dpi=dpi, batch=batch)
+
+    if dst is None:
+        name = slugify(src.name).removesuffix("-pdf")
+        dst = Path(f"a5-{name}")
+    dst = dst.expanduser().absolute()
+    if not dst.is_dir():
+        if not dst.parent.exists():
+            _bad_parameter(f"Destination {dst} is not a directory")
+        dst.mkdir(parents=False, exist_ok=True)
+
+    convert_pdf_to_a5(source=src, dest=dst, dpi=dpi, batch=batch)
 
 
 def main() -> None:  # noqa: D103
