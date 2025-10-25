@@ -160,7 +160,7 @@ def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Ima
         scale_factor = min(max_width / image1_width, max_height / image1_height)
         image1 = image1.resize(
             (int(image1_width * scale_factor), int(image1_height * scale_factor)),
-            Image.LANCZOS,
+            resample=Image.Resampling.LANCZOS,
         )
 
     # position for the first image (left)
@@ -174,7 +174,7 @@ def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Ima
         scale_factor = min(max_width / image2_width, max_height / image2_height)
         image2 = image2.resize(
             (int(image2_width * scale_factor), int(image2_height * scale_factor)),
-            Image.LANCZOS,
+            resample=Image.Resampling.LANCZOS,
         )
 
     # position for the second image (right, maximum right)
