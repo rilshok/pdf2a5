@@ -1,22 +1,37 @@
 [project]
-name = 'pdf2a5'
-readme = 'README.md'
-requires-python = '>=3.11'
-dynamic = ['version', 'dependencies']
+name = "pdf2a5"
+version = "0.1.0"
+description = "PDF to A5 Booklet Converter"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.20.0",
+    "PyMuPDF>=1.26.5",
+    "pillow>=12.0.0",
+]
 
 [build-system]
-requires = ['setuptools>=43.0.0', 'wheel']
-build-backend = 'setuptools.build_meta'
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
 
-[tool.setuptools.packages.find]
-include = ['pdf2a5']
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=4.3.0",
+    "ruff>=0.14.2",
+    "pytest>=8.4.2",
+]
 
 [tool.setuptools.package-data]
-'pdf2a5' = ['**/*.py', '**/*.pyi']
-
-[tool.setuptools.dynamic]
-version = { attr = 'pdf2a5.__version__' }
-dependencies = { file = ['requirements.txt'] }
+"pdf2a5" = ["**/*.py", "**/*.pyi"]
 
 [project.scripts]
 pdf2a5 = "pdf2a5.entrypoint:main"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "TD001", "TD003", "FIX001", "FIX002",
+    "COM812", "D203", "D213",
+    "PLR0911", "PLR0913", "PLR2004",
+]
