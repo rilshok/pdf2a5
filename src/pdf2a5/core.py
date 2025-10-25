@@ -3,20 +3,21 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+
 import fitz  # PyMuPDF
 from PIL import Image
 
 # TODO(@rilshok): the code requires complete refactoring, built on scratch
 
 
-def split_scheme(page_count, sheet_group):
+def split_scheme(page_count: int, sheet_group: int) -> list[int]:
     sheets_count = math.ceil(page_count / 4)
     groups = [sheet_group] * math.ceil(sheets_count / sheet_group)
     idxs = itertools.cycle(range(len(groups) - 1, -1, -1))
     while sum(groups) > sheets_count:
         idx = next(idxs)
         groups[idx] = groups[idx] - 1
-    result = []
+    result: list[int] = []
     for i, p in enumerate(groups[::-1]):
         if i % 2:
             result.append(p)
@@ -25,9 +26,9 @@ def split_scheme(page_count, sheet_group):
     return result
 
 
-def destribute_pages(page_count, scheme: list[int]):
+def destribute_pages(page_count: int, scheme: list[int]) -> list[list[int]]:
     pages = list(range(page_count))
-    pages_split = []
+    pages_split: list[list[int]] = []
 
     current = 0
     for group in scheme:
