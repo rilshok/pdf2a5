@@ -8,7 +8,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageChops
+
+
+from collections.abc import Container
 
 
 def _random_name() -> str:
@@ -140,6 +143,8 @@ def as2_a5_page(
     image2_path: Path | None,
     dpi: int,
     save_root: Path,
+    fold_mm: float,
+    shift_mm: float,
 ) -> Path:
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
@@ -148,6 +153,8 @@ def as2_a5_page(
     a4_height_mm = 210
 
     # Converting dimensions to pixels with DPI
+    fold_px = int(fold_mm * dpi / 25.4)
+    shift_px = int(shift_mm * dpi / 25.4)
     a4_width_px = int(a4_width_mm * dpi / 25.4)
     a4_height_px = int(a4_height_mm * dpi / 25.4)
 
@@ -156,7 +163,7 @@ def as2_a5_page(
 
     # the first image will be on the left
     image1_width, image1_height = image1.size
-    max_width = a4_width_px // 2  # max width for the image
+    max_width = a4_width_px // 2 - fold_px  # max width for the image
     max_height = a4_height_px  # max height for the image
 
     # scaling the first image
@@ -168,7 +175,10 @@ def as2_a5_page(
         )
 
     # position for the first image (left)
-    canvas.paste(image1, (0, a4_height_px // 2 - image1.height // 2))
+    canvas.paste(
+        image1,
+        (0 - shift_px, a4_height_px // 2 - image1.height // 2),
+    )
 
     # the second image will be on the right
     image2_width, image2_height = image2.size
@@ -184,7 +194,10 @@ def as2_a5_page(
     # position for the second image (right, maximum right)
     canvas.paste(
         image2,
-        (a4_width_px - image2.width, a4_height_px // 2 - image2.height // 2),
+        (
+            a4_width_px - image2.width + shift_px,
+            a4_height_px // 2 - image2.height // 2,
+        ),
     )
 
     save_path = save_root / f"{_random_name()}.png"
@@ -198,11 +211,24 @@ def _write_pdf(save_path: Path, image_paths: list[Path]) -> Path:
     return save_path
 
 
+def trim_white_borders(image: Image.Image) -> Image.Image:
+    bg = Image.new(image.mode, image.size, (255, 255, 255))
+    diff = ImageChops.difference(image, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        trimmed_image = image.crop(bbox)
+        return trimmed_image
+    return image
+
+
 def _export_page_images(
     src: Path,
     pages: list[int],
     save_root: Path,
+    *,
     dpi: int,
+    crop: bool,
+    skip_crop: Container[int],
 ) -> list[Path]:
     result: list[Path] = []
     document = fitz.open(src.as_posix())
@@ -213,6 +239,8 @@ def _export_page_images(
             img_data = image.samples
             size = (image.width, image.height)
             pil_image = Image.frombytes("RGB", size, img_data)
+            if crop and page_number not in skip_crop:
+                pil_image = trim_white_borders(pil_image)
             save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
             result.append(save_path)
@@ -224,8 +252,13 @@ def _export_page_images(
 def _build_sub_pdf(
     src: Path,
     pages: list[tuple[int | None, int | None]],
+    *,
     save_path: Path,
     dpi: int,
+    fold_mm: float,
+    shift_mm: float,
+    crop: bool,
+    skip_crop: Container[int],
 ) -> None:
     page_nums = [n for page in pages for n in page if n is not None]
     with TemporaryDirectory() as tmpdir:
@@ -238,6 +271,8 @@ def _build_sub_pdf(
                     pages=page_nums,
                     save_root=root_temp,
                     dpi=dpi,
+                    crop=crop,
+                    skip_crop=skip_crop,
                 ),
                 strict=True,
             )
@@ -249,6 +284,8 @@ def _build_sub_pdf(
                 image2_path=single_page_paths[right],
                 dpi=dpi,
                 save_root=root_temp,
+                fold_mm=fold_mm,
+                shift_mm=shift_mm,
             )
             for left, right in pages
         ]
@@ -258,9 +295,14 @@ def _build_sub_pdf(
 def convert_pdf_to_a5(
     src: Path,
     dst_root: Path,
+    *,
     dpi: int,
     batch: int,
+    fold_mm: float,
+    shift_mm: float,
+    crop: bool,
     workers: int,
+    skip_crop: Container[int],
 ) -> None:
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
@@ -274,6 +316,10 @@ def convert_pdf_to_a5(
                 pages=pages,
                 save_path=dst_root / f"{name}.pdf",
                 dpi=dpi,
+                fold_mm=fold_mm,
+                shift_mm=shift_mm,
+                crop=crop,
+                skip_crop=skip_crop,
             )
             for name, pages in scheme.items()
         ]
