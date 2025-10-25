@@ -180,13 +180,13 @@ def as2_a5_page(image1, image2, dpi):
     return canvas
 
 
-def images_to_pdf(name, images):
-    pdf_filename = f"{name}.pdf"
-    images[0].save(pdf_filename, save_all=True, append_images=images[1:])
+def images_to_pdf(root: Path, name: str, images):
+    filename = root / f"{name}.pdf"
+    images[0].save(filename, save_all=True, append_images=images[1:])
 
 
-def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int) -> None:
-    images = pdf_to_image_list(pdf_file=source, dpi=dpi)
+def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
+    images = pdf_to_image_list(pdf_file=src, dpi=dpi)
 
     scheme_ = make_a5_scheme(len(images), batch)
     scheme = [
@@ -209,4 +209,4 @@ def convert_pdf_to_a5(source: Path, dest: Path, dpi: int, batch: int) -> None:
     }
 
     for name, images__ in preresults.items():
-        images_to_pdf(str(dest / name), images__)
+        images_to_pdf(root=dst_root, name=name, images=images__)

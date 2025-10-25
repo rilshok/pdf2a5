@@ -60,7 +60,7 @@ def pdf2a5(
             _bad_parameter(f"Destination {dst} is not a directory")
         dst.mkdir(parents=False, exist_ok=True)
 
-    convert_pdf_to_a5(source=src, dest=dst, dpi=dpi, batch=batch)
+    convert_pdf_to_a5(src=src, dst_root=dst, dpi=dpi, batch=batch)
 
 
 def main() -> None:  # noqa: D103
