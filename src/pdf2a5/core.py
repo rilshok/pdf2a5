@@ -121,9 +121,8 @@ def make_a5_scheme(
 
     for block, (sheet_count, pages) in enumerate(zip(scheme, page_nums, strict=True)):
         block_sheets = make_sheets(sheet_count, pages)
-        yield f"{block:03}_a", [sheet.front for sheet in block_sheets]
-        # TODO(@rilshok): reverse back pages?
-        yield f"{block:03}_b", [sheet.back for sheet in block_sheets]
+        yield f"{block:03}_a", [sheet.back for sheet in block_sheets][::-1]
+        yield f"{block:03}_b", [sheet.front for sheet in block_sheets]
 
 
 def _read_number_of_pages(pdf_path: Path) -> int:
