@@ -132,7 +132,7 @@ def pdf_to_image_list(pdf_file: Path, dpi: int) -> list[Image.Image]:
     return result
 
 
-def as2_a5_page(image1, image2, dpi):
+def as2_a5_page(image1: Image.Image, image2: Image.Image, dpi: int) -> Image.Image:
     # A4 sheet dimensions in millimetres
     a4_width_mm = 297
     a4_height_mm = 210
@@ -180,9 +180,9 @@ def as2_a5_page(image1, image2, dpi):
     return canvas
 
 
-def images_to_pdf(root: Path, name: str, images):
-    filename = root / f"{name}.pdf"
-    images[0].save(filename, save_all=True, append_images=images[1:])
+def images_to_pdf(root: Path, name: str, images: list[Image.Image]) -> None:
+    save_path = root / f"{name}.pdf"
+    images[0].save(save_path, save_all=True, append_images=images[1:])
 
 
 def convert_pdf_to_a5(src: Path, dst_root: Path, dpi: int, batch: int) -> None:
