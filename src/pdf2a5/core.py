@@ -303,9 +303,12 @@ def convert_pdf_to_a5(
     workers: int,
     skip_crop: Container[int],
 ) -> None:
+    page_count = _read_number_of_pages(src)
+    if batch * 4 > page_count:
+        batch = math.ceil(page_count / 4)
     scheme: dict[str, list[tuple[int | None, int | None]]] = {
         name: [(p.left.payload, p.right.payload) for p in pages]
-        for name, pages in make_a5_scheme(_read_number_of_pages(src), batch)
+        for name, pages in make_a5_scheme(page_count, batch)
     }
     with ProcessPoolExecutor(max_workers=workers) as executor:
         futures = [
