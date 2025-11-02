@@ -105,7 +105,7 @@ def make_sheets(sheet_count: int, pages: list[int]):
         contents.append(sheet.front.right)
         contents.append(sheet.back.left)
 
-    for content, page in zip(contents, pages, strict=True):
+    for content, page in zip(contents, pages, strict=False):
         content.payload = page
 
     # TODO(@rilshok): why contents is needed?
@@ -137,6 +137,39 @@ def _empty_image() -> Image.Image:
     return Image.new("RGB", (1, 1), "white")
 
 
+def _mm_to_px(mm: float, dpi: int) -> int:
+    return int(mm * dpi / 25.4)
+
+
+@dataclass
+class Size:
+    """Size with width, height and unit."""
+
+    height: float
+    width: float
+    unit: str
+
+    @property
+    def transpose(self) -> "Size":
+        """Transpose height and width."""
+        return Size(height=self.width, width=self.height, unit=self.unit)
+
+    def to_px(self, dpi: int) -> "Size":
+        """Convert size to pixels."""
+        if self.unit == "mm":
+            return Size(
+                height=_mm_to_px(self.height, dpi),
+                width=_mm_to_px(self.width, dpi),
+                unit="px",
+            )
+        msg = f"Unit {self.unit!r} is not supported"
+        raise NotImplementedError(msg)
+
+
+A4 = Size(height=297, width=210, unit="mm")
+A5 = Size(height=A4.width, width=A4.height / 2, unit="mm")
+
+
 def as2_a5_page(
     image1_path: Path | None,
     image2_path: Path | None,
@@ -148,14 +181,13 @@ def as2_a5_page(
     # A4 sheet dimensions in millimetres
     image1 = _empty_image() if image1_path is None else Image.open(image1_path)
     image2 = _empty_image() if image2_path is None else Image.open(image2_path)
-    a4_width_mm = 297
-    a4_height_mm = 210
 
     # Converting dimensions to pixels with DPI
-    fold_px = int(fold_mm * dpi / 25.4)
-    shift_px = int(shift_mm * dpi / 25.4)
-    a4_width_px = int(a4_width_mm * dpi / 25.4)
-    a4_height_px = int(a4_height_mm * dpi / 25.4)
+    fold_px = _mm_to_px(fold_mm, dpi)
+    shift_px = _mm_to_px(shift_mm, dpi)
+
+    a4_width_px = int(A4.transpose.to_px(dpi).width)
+    a4_height_px = int(A4.transpose.to_px(dpi).height)
 
     # blank A4 sheet with DPI
     canvas = Image.new("RGB", (a4_width_px, a4_height_px), "white")
