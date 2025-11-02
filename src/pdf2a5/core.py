@@ -272,6 +272,17 @@ def _export_page_images(
             pil_image = Image.frombytes("RGB", size, img_data)
             if crop and page_number not in skip_crop:
                 pil_image = trim_white_borders(pil_image)
+
+            # resize to fit A5
+            width, height = pil_image.size
+            max_height = int(A5.to_px(dpi).height)
+            max_width = int(A5.to_px(dpi).width)
+            scale_factor = min(max_width / width, max_height / height)
+            pil_image = pil_image.resize(
+                (int(width * scale_factor), int(height * scale_factor)),
+                resample=Image.Resampling.LANCZOS,
+            )
+
             save_path = save_root / f"{_random_name()}.png"
             pil_image.save(save_path)
             result.append(save_path)
